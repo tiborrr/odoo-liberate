@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Packages
+dist/
+build/
+*.egg-info/
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+
+# Odoo Backups
+*.zip
+*.sql
