@@ -1,3 +1,18 @@
+[project]
+name = "odoo-liberate"
+version = "0.1.0"
+description = "A zero-dependency CLI tool to migrate Odoo Enterprise databases to Community Edition by stripping proprietary artifacts."
+authors = [{ name = "tiborrr", email = "tibor@casteleijn.com" }]
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = []
+
+[project.scripts]
+odoo-liberate = "odoo_liberate.cli:main"
+
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true

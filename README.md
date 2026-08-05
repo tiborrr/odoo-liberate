@@ -14,10 +14,14 @@ When you restore an Odoo Enterprise backup on an Odoo Community instance, the da
 
 ## Installation
 
-You can install `odoo-liberate` directly using `pip`:
+You can run `odoo-liberate` directly using `uv`:
 
 ```bash
-pip install .
+uv tool install .
+```
+Or run it without installing using:
+```bash
+uv run odoo-liberate
 ```
 
 ## Usage
