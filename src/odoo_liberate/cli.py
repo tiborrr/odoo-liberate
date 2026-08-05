@@ -58,33 +58,41 @@ def run_pg_restore(db_kwargs, dump_path):
         print(f"Error during restore: {e}")
         sys.exit(1)
 
+from .queries import UNSUPPORTED_VIEW_MODES, UNSUPPORTED_MODULES, CUSTOM_CLEANUP_QUERIES
+
 def scrub_enterprise_artifacts(db_kwargs):
     """Runs the SQL queries necessary to strip Enterprise components."""
     print("Scrubbing Enterprise artifacts from the database...")
     
     queries = [
         # 1. Mark Enterprise modules as uninstalled
-        "UPDATE ir_module_module SET state = 'uninstalled' WHERE license = 'OEEL-1';",
+        "UPDATE ir_module_module SET state = 'uninstalled' WHERE license = 'OEEL-1';"
+    ]
+    
+    # Also uninstall any manually specified unsupported modules
+    for module in UNSUPPORTED_MODULES:
+        queries.append(f"UPDATE ir_module_module SET state = 'uninstalled' WHERE name = '{module}';")
         
+    queries.extend([
         # 2. Deactivate views for uninstalled modules (fixes KanbanArchParser and Owl errors)
         "UPDATE ir_ui_view SET active = false WHERE id IN (SELECT res_id FROM ir_model_data WHERE model = 'ir.ui.view' AND module IN (SELECT name FROM ir_module_module WHERE state = 'uninstalled'));",
         
         # 3. Deactivate menus for uninstalled modules
         "UPDATE ir_ui_menu SET active = false WHERE id IN (SELECT res_id FROM ir_model_data WHERE model = 'ir.ui.menu' AND module IN (SELECT name FROM ir_module_module WHERE state = 'uninstalled'));",
+    ])
+    
+    # 4. Clean up Enterprise view modes from window actions
+    for view_mode in UNSUPPORTED_VIEW_MODES:
+        queries.append(f"UPDATE ir_act_window SET view_mode = REPLACE(view_mode, ',{view_mode}', '') WHERE view_mode ILIKE '%{view_mode}%';")
+        queries.append(f"UPDATE ir_act_window SET view_mode = REPLACE(view_mode, '{view_mode},', '') WHERE view_mode ILIKE '%{view_mode}%';")
         
-        # 4. Clean up Enterprise view modes from window actions
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, ',grid', '') WHERE view_mode ILIKE '%grid%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, ',gantt', '') WHERE view_mode ILIKE '%gantt%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, ',cohort', '') WHERE view_mode ILIKE '%cohort%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, ',map', '') WHERE view_mode ILIKE '%map%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, 'grid,', '') WHERE view_mode ILIKE '%grid%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, 'gantt,', '') WHERE view_mode ILIKE '%gantt%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, 'cohort,', '') WHERE view_mode ILIKE '%cohort%';",
-        "UPDATE ir_act_window SET view_mode = REPLACE(view_mode, 'map,', '') WHERE view_mode ILIKE '%map%';",
+    # 5. Delete specific view mode bindings that force Enterprise views
+    modes_str = ", ".join(f"'{m}'" for m in UNSUPPORTED_VIEW_MODES)
+    if modes_str:
+        queries.append(f"DELETE FROM ir_act_window_view WHERE view_mode IN ({modes_str});")
         
-        # 5. Delete specific view mode bindings that force Enterprise views
-        "DELETE FROM ir_act_window_view WHERE view_mode IN ('grid', 'gantt', 'cohort', 'map');"
-    ]
+    # 6. Run any custom cleanup queries provided by contributors
+    queries.extend(CUSTOM_CLEANUP_QUERIES)
     
     for query in queries:
         run_psql_command(db_kwargs, query)

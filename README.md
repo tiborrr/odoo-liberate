@@ -57,3 +57,7 @@ odoo -u all -d my_database
 ```
 
 Once this is complete, restart your Odoo server and you're good to go!
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a guide on how to add new modules, view modes, or custom SQL queries to make the database scrubbing process even more robust.
