@@ -60,7 +60,7 @@ def run_pg_restore(db_kwargs, dump_path):
 
 from .queries import UNSUPPORTED_VIEW_MODES, UNSUPPORTED_MODULES, CUSTOM_CLEANUP_QUERIES, SECURITY_CLEANUP_QUERIES
 
-def scrub_enterprise_artifacts(db_kwargs):
+def scrub_enterprise_artifacts(db_kwargs, reset_security=False):
     """Runs the SQL queries necessary to strip Enterprise components."""
     print("Scrubbing Enterprise artifacts from the database...")
     
@@ -95,18 +95,21 @@ def scrub_enterprise_artifacts(db_kwargs):
     queries.extend(CUSTOM_CLEANUP_QUERIES)
 
     # 7. Reset passwords and disable 2FA
-    queries.extend(SECURITY_CLEANUP_QUERIES)
+    if reset_security:
+        queries.extend(SECURITY_CLEANUP_QUERIES)
     
     for query in queries:
         run_psql_command(db_kwargs, query)
         
     print("Database scrubbing complete! Your database is ready for Odoo Community.")
-    print("\n" + "="*50)
-    print("SECURITY NOTICE:")
-    print("All user passwords have been automatically reset to 'admin'!")
-    print("Two-Factor Authentication (2FA) has also been disabled.")
-    print("This ensures you won't be locked out of your local restored instance.")
-    print("="*50 + "\n")
+    
+    if reset_security:
+        print("\n" + "="*50)
+        print("SECURITY NOTICE:")
+        print("All user passwords have been automatically reset to 'admin'!")
+        print("Two-Factor Authentication (2FA) has also been disabled.")
+        print("This ensures you won't be locked out of your local restored instance.")
+        print("="*50 + "\n")
     
     print("IMPORTANT NEXT STEPS:")
     print("Run `odoo -u all -d <db_name>` to finalize the removal of uninstalled modules.")
@@ -128,6 +131,10 @@ def main():
     # Scrub only mode
     parser.add_argument("--scrub-only", action="store_true", help="Skip extraction and restore, only run the scrubbing SQL queries.")
     
+    # Security options
+    parser.add_argument("--reset-security", action="store_true", help="Automatically reset all user passwords to 'admin' and disable 2FA.")
+    parser.add_argument("--security-only", action="store_true", help="Skip everything and ONLY run the security reset queries.")
+    
     args = parser.parse_args()
     
     db_kwargs = {
@@ -138,12 +145,23 @@ def main():
         'port': args.port
     }
     
+    if args.security_only:
+        print("Running security reset only...")
+        for query in SECURITY_CLEANUP_QUERIES:
+            run_psql_command(db_kwargs, query)
+        print("\n" + "="*50)
+        print("SECURITY NOTICE:")
+        print("All user passwords have been automatically reset to 'admin'!")
+        print("Two-Factor Authentication (2FA) has also been disabled.")
+        print("="*50 + "\n")
+        sys.exit(0)
+    
     if args.scrub_only:
-        scrub_enterprise_artifacts(db_kwargs)
+        scrub_enterprise_artifacts(db_kwargs, reset_security=args.reset_security)
         sys.exit(0)
         
     if not args.zip_path:
-        print("Error: zip_path is required unless --scrub-only is specified.")
+        print("Error: zip_path is required unless --scrub-only or --security-only is specified.")
         parser.print_help()
         sys.exit(1)
         
@@ -181,7 +199,7 @@ def main():
                 print("Warning: No 'filestore' directory found in the backup zip.")
                 
         # 3. Scrub Enterprise Artifacts
-        scrub_enterprise_artifacts(db_kwargs)
+        scrub_enterprise_artifacts(db_kwargs, reset_security=args.reset_security)
 
 if __name__ == "__main__":
     main()

@@ -40,6 +40,12 @@ This will:
 3. Copy the `filestore/` directory to `/var/lib/odoo/filestore/my_database`.
 4. Run the scrubbing queries against `my_database`.
 
+To automatically reset all passwords to `admin` and disable 2FA during this process, append the `--reset-security` flag:
+
+```bash
+odoo-liberate backup.zip -d my_database -U my_db_user --reset-security
+```
+
 ### Scrub Only (For an already restored database)
 
 If you've already manually restored your database and just need to scrub the Enterprise artifacts to fix the UI crashes:
@@ -48,9 +54,18 @@ If you've already manually restored your database and just need to scrub the Ent
 odoo-liberate -d my_database -U my_db_user -W my_password --scrub-only
 ```
 
+### Security Reset Only (Fixing Administrator Lockouts)
+
+If you have already restored and scrubbed your database, but find yourself locked out because you don't know the cloud password or have 2FA enabled, you can run:
+
+```bash
+odoo-liberate -d my_database -U my_db_user -W my_password --security-only
+```
+This will forcefully disable 2FA and reset all user passwords to `admin` without altering any other data.
+
 ### Important Next Step
 
-After `odoo-liberate` finishes, you **MUST** run the following command to have Odoo's ORM finalize the removal of the deactivated Enterprise modules:
+After `odoo-liberate` finishes a scrub, you **MUST** run the following command to have Odoo's ORM finalize the removal of the deactivated Enterprise modules:
 
 ```bash
 odoo -u all -d my_database
@@ -68,7 +83,7 @@ If you try to log into the restored database with the wrong password too many ti
 
 ### 2. Administrator Lockouts (Passwords & 2FA)
 When restoring a cloud backup, you usually inherit the cloud's secure passwords and Two-Factor Authentication configurations, which would lock you out locally.
-**Fix**: `odoo-liberate` now **automatically** handles this! During the scrubbing phase, it drops all 2FA TOTP secrets and automatically resets every user's password to `admin`. You can log in immediately after running the script without any manual database edits.
+**Fix**: You can bypass this using `odoo-liberate --security-only` as described above, or by appending `--reset-security` to your initial migration command.
 
 ### 3. `psql` Restoration Errors (`relation does not exist`)
 When `odoo-liberate` restores the `dump.sql`, you might see some `ERROR:` messages in the console (e.g., `relation "public.ai_embedding" does not exist` or `role "odoo" does not exist`).
