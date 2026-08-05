@@ -58,7 +58,7 @@ def run_pg_restore(db_kwargs, dump_path):
         print(f"Error during restore: {e}")
         sys.exit(1)
 
-from .queries import UNSUPPORTED_VIEW_MODES, UNSUPPORTED_MODULES, CUSTOM_CLEANUP_QUERIES
+from .queries import UNSUPPORTED_VIEW_MODES, UNSUPPORTED_MODULES, CUSTOM_CLEANUP_QUERIES, SECURITY_CLEANUP_QUERIES
 
 def scrub_enterprise_artifacts(db_kwargs):
     """Runs the SQL queries necessary to strip Enterprise components."""
@@ -93,12 +93,22 @@ def scrub_enterprise_artifacts(db_kwargs):
         
     # 6. Run any custom cleanup queries provided by contributors
     queries.extend(CUSTOM_CLEANUP_QUERIES)
+
+    # 7. Reset passwords and disable 2FA
+    queries.extend(SECURITY_CLEANUP_QUERIES)
     
     for query in queries:
         run_psql_command(db_kwargs, query)
         
     print("Database scrubbing complete! Your database is ready for Odoo Community.")
-    print("\nIMPORTANT NEXT STEPS:")
+    print("\n" + "="*50)
+    print("SECURITY NOTICE:")
+    print("All user passwords have been automatically reset to 'admin'!")
+    print("Two-Factor Authentication (2FA) has also been disabled.")
+    print("This ensures you won't be locked out of your local restored instance.")
+    print("="*50 + "\n")
+    
+    print("IMPORTANT NEXT STEPS:")
     print("Run `odoo -u all -d <db_name>` to finalize the removal of uninstalled modules.")
 
 def main():

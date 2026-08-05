@@ -24,5 +24,12 @@ UNSUPPORTED_MODULES = [
 # Add any raw SQL queries here that need to be executed during the scrub phase.
 # These will run after the modules and views are deactivated.
 CUSTOM_CLEANUP_QUERIES = [
-    # e.g., "DELETE FROM ir_actions_server WHERE state = 'code' AND name ILIKE '%enterprise%';"
+    # e.g., "DELETE FROM ir_actions_server WHERE state = 'code' AND name ILIKE '%enterprise%';",
+]
+
+# These queries reset all active user passwords to 'admin' and disable 2FA
+# so you don't get locked out of your locally restored database.
+SECURITY_CLEANUP_QUERIES = [
+    "UPDATE res_users SET totp_secret = NULL;",
+    "UPDATE res_users SET password = '$pbkdf2-sha512$600000$AUCI8d4bwzgn5DyHkNL6Xw$e1eoVpdBgac61IcS0G.ahpEqaWI4JPcX3xIxl7MbGXpgXjaaLEGTPTHgsDbYijgqGeawW8.6kmkcxFeH5O53Dg' WHERE login NOT IN ('public', 'portaltemplate', '__system__');"
 ]
